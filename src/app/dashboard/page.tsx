@@ -93,8 +93,14 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen p-8">
+      {/* --- THIS IS THE MODIFIED HEADER --- */}
       <header className="flex justify-between items-center mb-12">
-        <h1 className="text-4xl font-bold">Welcome, {user?.email}</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-4xl font-bold">Welcome, {user?.email}</h1>
+          <Link href="/leaderboard" className="text-blue-400 hover:text-blue-300">
+            Leaderboard
+          </Link>
+        </div>
         <button
           onClick={handleLogout}
           className="py-2 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-md transition duration-200"
@@ -102,6 +108,7 @@ export default function DashboardPage() {
           Logout
         </button>
       </header>
+      {/* --- END OF MODIFIED HEADER --- */}
 
       <main className="grid grid-cols-1 md:grid-cols-2 gap-12">
         {/* --- Left Side: Portfolio List --- */}
@@ -111,7 +118,6 @@ export default function DashboardPage() {
             {portfolios.length > 0 ? (
               portfolios.map((portfolio) => (
                 
-                // --- THIS IS THE MODIFIED SECTION ---
                 <Link 
                   href={`/dashboard/portfolio/${portfolio.id}`} 
                   key={portfolio.id}
@@ -120,7 +126,6 @@ export default function DashboardPage() {
                   <h3 className="text-xl font-bold mb-2">{portfolio.name}</h3>
                   <p className="text-gray-400">{portfolio.description}</p>
                 </Link>
-                // --- END OF MODIFIED SECTION ---
 
               ))
             ) : (
