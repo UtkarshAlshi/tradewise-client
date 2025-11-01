@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  /* config options here */
+const config: NextConfig = {
+  // This line explicitly tells Next.js where the project root is,
+  // which fixes the "inferred workspace root" warning.
+  outputFileTracingRoot: __dirname,
 };
 
-export default nextConfig;
+export default config;
