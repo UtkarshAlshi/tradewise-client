@@ -95,11 +95,16 @@ export default function DashboardPage() {
     <div className="min-h-screen p-8">
       {/* --- THIS IS THE MODIFIED HEADER --- */}
       <header className="flex justify-between items-center mb-12">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-6"> {/* Added more gap */}
           <h1 className="text-4xl font-bold">Welcome, {user?.email}</h1>
-          <Link href="/leaderboard" className="text-blue-400 hover:text-blue-300">
+          <Link href="/leaderboard" className="text-lg text-blue-400 hover:text-blue-300">
             Leaderboard
           </Link>
+          {/* --- ADD THIS LINK --- */}
+          <Link href="/strategies" className="text-lg text-blue-400 hover:text-blue-300">
+            My Strategies
+          </Link>
+          {/* --- END OF ADDITION --- */}
         </div>
         <button
           onClick={handleLogout}
