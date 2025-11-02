@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-// import { useRouter } from 'next/navigation'; // Removed for compilation
-// import Link from 'next/link'; // Removed for compilation
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
-// --- 1. Define Frontend Types (must match backend DTOs) ---
+// --- 1. Define Types ---
 interface StrategyCondition {
   indicatorA: string;
   indicatorAParams: { [key: string]: any };
@@ -27,19 +27,34 @@ interface CreateStrategyRequest {
   rules: StrategyRule[];
 }
 
-// --- Constants for our form dropdowns ---
-const INDICATORS = ['PRICE', 'SMA', 'EMA', 'RSI'];
-const OPERATORS = ['GREATER_THAN', 'LESS_THAN', 'CROSSES_ABOVE', 'CROSSES_BELOW'];
-const INDICATOR_B_TYPES = ['VALUE', 'INDICATOR'];
+// --- 2. Define Constants for Dropdowns ---
+const INDICATORS = [
+  { value: 'PRICE', label: 'Price', needsPeriod: false },
+  { value: 'SMA', label: 'SMA', needsPeriod: true },
+  { value: 'EMA', label: 'EMA', needsPeriod: true },
+  { value: 'RSI', label: 'RSI', needsPeriod: true },
+];
 
-// --- Helper functions to create new, empty items ---
+const OPERATORS = [
+  { value: 'GREATER_THAN', label: '>' },
+  { value: 'LESS_THAN', label: '<' },
+  { value: 'CROSSES_ABOVE', label: 'Crosses Above' },
+  { value: 'CROSSES_BELOW', label: 'Crosses Below' },
+];
+
+const B_TYPES = [
+  { value: 'VALUE', label: 'Number' },
+  { value: 'INDICATOR', label: 'Indicator' },
+];
+
+// --- 3. Helper functions to create new items ---
 const createNewCondition = (): StrategyCondition => ({
   indicatorA: 'PRICE',
-  indicatorAParams: { period: 14 }, // Default params
+  indicatorAParams: {},
   operator: 'GREATER_THAN',
   indicatorBType: 'VALUE',
-  indicatorBValue: '70',
-  indicatorBParams: { period: 50 }, // Default params
+  indicatorBValue: '0',
+  indicatorBParams: {},
 });
 
 const createNewRule = (): StrategyRule => ({
@@ -49,119 +64,23 @@ const createNewRule = (): StrategyRule => ({
   conditions: [createNewCondition()],
 });
 
-// --- Component to render indicator parameters ---
-const IndicatorParamsInput = ({
-  params,
-  onChange,
-}: {
-  params: { [key: string]: any };
-  onChange: (key: string, value: any) => void;
-}) => {
-  // Only show 'period' input for now
-  if (params.hasOwnProperty('period')) {
-    return (
-      <input
-        type="number"
-        value={params.period}
-        onChange={(e) => onChange('period', parseInt(e.target.value) || 0)}
-        className="w-20 px-2 py-1 bg-gray-600 text-white rounded-md text-sm"
-        placeholder="Period"
-      />
-    );
-  }
-  return null; // No params needed for 'PRICE'
-};
-
+// --- 4. The Main Component ---
 export default function NewStrategyPage() {
-  // FIX: Use simple browser redirect to avoid build error
-  const router = {
-    push: (path: string) => {
-      window.location.href = path;
-    },
-  };
+  const router = useRouter();
   const [strategy, setStrategy] = useState<CreateStrategyRequest>({
     name: '',
     description: '',
-    rules: [createNewRule()], // Start with one empty rule
+    rules: [createNewRule()],
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // --- 2. State Helper Functions ---
-
-  // Handle simple text inputs
+  // --- 5. State Helper Functions ---
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setStrategy({
       ...strategy,
       [e.target.name]: e.target.value,
     });
-  };
-
-  const handleRuleChange = (
-    ruleIndex: number,
-    field: string,
-    value: string | number
-  ) => {
-    const newRules = [...strategy.rules];
-    // Create a new object for the rule to ensure state update
-    const updatedRule = { ...newRules[ruleIndex], [field]: value };
-    newRules[ruleIndex] = updatedRule;
-    setStrategy({ ...strategy, rules: newRules });
-  };
-  
-  const handleConditionChange = (
-    ruleIndex: number,
-    condIndex: number,
-    field: string,
-    value: string | number
-  ) => {
-    const newRules = [...strategy.rules];
-    const newConditions = [...newRules[ruleIndex].conditions];
-    const newCondition = { ...newConditions[condIndex], [field]: value };
-
-    // If changing indicator, reset params
-    if (field === 'indicatorA' || (field === 'indicatorBValue' && newCondition.indicatorBType === 'INDICATOR')) {
-      const needsParams = ['SMA', 'EMA', 'RSI'].includes(value as string);
-      const paramField = field === 'indicatorA' ? 'indicatorAParams' : 'indicatorBParams';
-      
-      // Only reset if it needs params
-      if (needsParams) {
-        newCondition[paramField] = { period: 14 }; 
-      } else {
-        newCondition[paramField] = {};
-      }
-    }
-
-    // If changing type to VALUE, clear indicatorBParams
-    if(field === 'indicatorBType' && value === 'VALUE') {
-      newCondition.indicatorBParams = {};
-    }
-    
-    newConditions[condIndex] = newCondition;
-    newRules[ruleIndex].conditions = newConditions;
-    setStrategy({ ...strategy, rules: newRules });
-  };
-  
-  const handleConditionParamChange = (
-    ruleIndex: number,
-    condIndex: number,
-    paramSide: 'A' | 'B',
-    key: string,
-    value: any
-  ) => {
-    const newRules = [...strategy.rules];
-    const newConditions = [...newRules[ruleIndex].conditions];
-    const newCondition = { ...newConditions[condIndex] };
-
-    if (paramSide === 'A') {
-      newCondition.indicatorAParams = { ...newCondition.indicatorAParams, [key]: value };
-    } else {
-      newCondition.indicatorBParams = { ...newCondition.indicatorBParams, [key]: value };
-    }
-
-    newConditions[condIndex] = newCondition;
-    newRules[ruleIndex].conditions = newConditions;
-    setStrategy({ ...strategy, rules: newRules });
   };
 
   const addRule = () => {
@@ -192,7 +111,45 @@ export default function NewStrategyPage() {
     setStrategy({ ...strategy, rules: newRules });
   };
 
-  // --- THIS IS THE UPDATED SUBMIT FUNCTION ---
+  // --- Handle changes to a Rule (Action, Amount) ---
+  const handleRuleChange = (
+    ruleIndex: number,
+    field: keyof StrategyRule,
+    value: string | number
+  ) => {
+    const newRules = [...strategy.rules];
+    (newRules[ruleIndex] as any)[field] = value;
+    setStrategy({ ...strategy, rules: newRules });
+  };
+
+  // --- Handle changes to a Condition (Indicator, Operator, etc.) ---
+  const handleConditionChange = (
+    ruleIndex: number,
+    condIndex: number,
+    field: keyof StrategyCondition,
+    value: string | number
+  ) => {
+    const newRules = [...strategy.rules];
+    const condition = newRules[ruleIndex].conditions[condIndex];
+    (condition as any)[field] = value;
+    setStrategy({ ...strategy, rules: newRules });
+  };
+  
+  // --- Handle changes to an Indicator's parameters (e.g., period) ---
+  const handleParamChange = (
+    ruleIndex: number,
+    condIndex: number,
+    paramSide: 'indicatorAParams' | 'indicatorBParams',
+    paramName: string,
+    value: string
+  ) => {
+    const newRules = [...strategy.rules];
+    const condition = newRules[ruleIndex].conditions[condIndex];
+    condition[paramSide][paramName] = parseInt(value) || 0;
+    setStrategy({ ...strategy, rules: newRules });
+  };
+
+  // --- 6. Handle Form Submission ---
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
@@ -200,33 +157,11 @@ export default function NewStrategyPage() {
 
     const token = localStorage.getItem('token');
     if (!token) {
-      setError('You must be logged in to create a strategy.');
+      setError('You must be logged in.');
       setLoading(false);
       return;
     }
 
-    // Clean up params based on indicator type
-    const cleanedStrategy = {
-      ...strategy,
-      rules: strategy.rules.map(rule => ({
-        ...rule,
-        conditions: rule.conditions.map(cond => {
-          const cleanCond = { ...cond };
-          if (cleanCond.indicatorA === 'PRICE') {
-            cleanCond.indicatorAParams = {};
-          }
-          if (cleanCond.indicatorBType === 'VALUE') {
-            cleanCond.indicatorBParams = {};
-          } else if (cleanCond.indicatorBType === 'INDICATOR' && cleanCond.indicatorBValue === 'PRICE') {
-            cleanCond.indicatorBParams = {};
-          }
-          return cleanCond;
-        })
-      }))
-    };
-
-    console.log('Strategy to submit:', JSON.stringify(cleanedStrategy, null, 2));
-    
     try {
       const res = await fetch('http://localhost:8080/api/strategies', {
         method: 'POST',
@@ -234,16 +169,15 @@ export default function NewStrategyPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(cleanedStrategy), // Send the cleaned object
+        body: JSON.stringify(strategy),
       });
 
       if (res.ok) {
         // Success! Redirect back to the strategies list
         router.push('/strategies');
       } else {
-        // Handle errors from the backend
-        const errorData = await res.json();
-        setError(errorData.message || 'Failed to create strategy.');
+        const errorMessage = await res.text();
+        setError(`Error: ${errorMessage}`);
       }
     } catch (err) {
       setError('Failed to connect to the server.');
@@ -251,21 +185,21 @@ export default function NewStrategyPage() {
       setLoading(false);
     }
   };
-  // --- END OF UPDATE ---
 
+  // --- 7. The Main Form JSX ---
   return (
     <div className="min-h-screen p-8">
       <nav className="mb-6">
-        {/* FIX: Use 'a' tag to avoid 'next/link' build error */}
-        <a href="/strategies" className="text-blue-400 hover:text-blue-300">
+        <Link href="/strategies" className="text-blue-400 hover:text-blue-300">
           &larr; Back to My Strategies
-        </a>
+        </Link>
       </nav>
 
       <h1 className="text-4xl font-bold mb-8">Create New Strategy</h1>
 
       <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
         {/* --- Strategy Details --- */}
+        {/* ... (Same as before) ... */}
         <div className="bg-gray-800 p-6 rounded-lg shadow-md mb-8">
           <div className="mb-4">
             <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
@@ -296,7 +230,7 @@ export default function NewStrategyPage() {
           </div>
         </div>
 
-        {/* --- 4. The Dynamic Rules Builder --- */}
+        {/* --- The Dynamic Rules Builder --- */}
         <h2 className="text-2xl font-semibold mb-6">Rules</h2>
         {strategy.rules.map((rule, ruleIndex) => (
           <div key={ruleIndex} className="bg-gray-800 p-6 rounded-lg shadow-md mb-6 relative">
@@ -304,19 +238,35 @@ export default function NewStrategyPage() {
               type="button"
               onClick={() => removeRule(ruleIndex)}
               className="absolute top-4 right-4 text-red-500 hover:text-red-400 font-bold"
-            >
-              &times;
-            </button>
+            >&times;</button>
             
             <h3 className="text-lg font-bold mb-4">
-              Rule #{ruleIndex + 1}
+              IF ALL conditions are true...
             </h3>
             
-            {/* --- Action --- */}
-            <div className="grid grid-cols-2 gap-4 mb-4">
+            {/* --- Conditions --- */}
+            {rule.conditions.map((condition, condIndex) => (
+              <ConditionRow
+                key={condIndex}
+                condition={condition}
+                onRemove={() => removeCondition(ruleIndex, condIndex)}
+                onConditionChange={(field, value) => handleConditionChange(ruleIndex, condIndex, field, value)}
+                onParamChange={(paramSide, paramName, value) => handleParamChange(ruleIndex, condIndex, paramSide, paramName, value)}
+              />
+            ))}
+            
+            <button
+              type="button"
+              onClick={() => addCondition(ruleIndex)}
+              className="text-blue-400 hover:text-blue-300 text-sm mt-2"
+            >+ Add Condition (AND)</button>
+            
+            {/* --- Action (THEN) --- */}
+            <h3 className="text-lg font-bold mb-4 mt-6">THEN...</h3>
+            <div className="flex gap-4">
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-300 mb-2">Action</label>
-                <select 
+                <select
                   value={rule.action}
                   onChange={(e) => handleRuleChange(ruleIndex, 'action', e.target.value)}
                   className="w-full px-3 py-2 bg-gray-700 text-white rounded-md"
@@ -330,113 +280,18 @@ export default function NewStrategyPage() {
                 <input
                   type="number"
                   value={rule.actionAmountPercent}
-                  onChange={(e) => handleRuleChange(ruleIndex, 'actionAmountPercent', parseFloat(e.target.value) || 0)}
+                  onChange={(e) => handleRuleChange(ruleIndex, 'actionAmountPercent', parseFloat(e.target.value))}
                   className="w-full px-3 py-2 bg-gray-700 text-white rounded-md"
                 />
               </div>
             </div>
-
-            {/* --- Conditions --- */}
-            <h4 className="text-md font-semibold mb-4 text-blue-300">
-              Conditions (IF ALL are true):
-            </h4>
-            
-            {rule.conditions.map((condition, condIndex) => (
-              <div key={condIndex} className="bg-gray-700 p-4 rounded-md mb-4 flex items-center gap-2 flex-wrap">
-                <span className="text-lg font-mono">IF</span>
-                
-                {/* Indicator A */}
-                <div className="flex gap-2 items-center">
-                  <select
-                    value={condition.indicatorA}
-                    onChange={(e) => handleConditionChange(ruleIndex, condIndex, 'indicatorA', e.target.value)}
-                    className="px-3 py-2 bg-gray-600 text-white rounded-md"
-                  >
-                    {INDICATORS.map(ind => <option key={ind} value={ind}>{ind}</option>)}
-                  </select>
-                  {['SMA', 'EMA', 'RSI'].includes(condition.indicatorA) && (
-                    <IndicatorParamsInput
-                      params={condition.indicatorAParams}
-                      onChange={(key, value) => handleConditionParamChange(ruleIndex, condIndex, 'A', key, value)}
-                    />
-                  )}
-                </div>
-
-                {/* Operator */}
-                <select
-                  value={condition.operator}
-                  onChange={(e) => handleConditionChange(ruleIndex, condIndex, 'operator', e.target.value)}
-                  className="px-3 py-2 bg-gray-600 text-white rounded-md"
-                >
-                  {OPERATORS.map(op => <option key={op} value={op}>{op.replace('_', ' ')}</option>)}
-                </select>
-
-                {/* Indicator B Type (Dropdown) */}
-                <select
-                  value={condition.indicatorBType}
-                  onChange={(e) => handleConditionChange(ruleIndex, condIndex, 'indicatorBType', e.target.value)}
-                  className="px-3 py-2 bg-gray-600 text-white rounded-md"
-                >
-                  {INDICATOR_B_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
-                </select>
-
-                {/* Indicator B (Conditional Input) */}
-                <div className="flex gap-2 items-center">
-                  {condition.indicatorBType === 'VALUE' ? (
-                    <input
-                      type="number"
-                      value={condition.indicatorBValue}
-                      onChange={(e) => handleConditionChange(ruleIndex, condIndex, 'indicatorBValue', e.target.value)}
-                      className="w-24 px-3 py-2 bg-gray-600 text-white rounded-md"
-                    />
-                  ) : (
-                    <>
-                      <select
-                        value={condition.indicatorBValue}
-                        onChange={(e) => handleConditionChange(ruleIndex, condIndex, 'indicatorBValue', e.target.value)}
-                        className="px-3 py-2 bg-gray-600 text-white rounded-md"
-                      >
-                        {INDICATORS.map(ind => <option key={ind} value={ind}>{ind}</option>)}
-                      </select>
-                      {['SMA', 'EMA', 'RSI'].includes(condition.indicatorBValue) && (
-                        <IndicatorParamsInput
-                          params={condition.indicatorBParams}
-                          onChange={(key, value) => handleConditionParamChange(ruleIndex, condIndex, 'B', key, value)}
-                        />
-                      )}
-                    </>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => removeCondition(ruleIndex, condIndex)}
-                  className="text-red-500 hover:text-red-400 font-bold ml-auto"
-                >
-                  &times;
-                </button>
-              </div>
-            ))}
-
-            <button
-              type="button"
-              onClick={() => addCondition(ruleIndex)}
-              className="text-blue-400 hover:text-blue-300 text-sm"
-            >
-              + Add Condition
-            </button>
           </div>
         ))}
+        
+        {/* We can disable adding more rules for our MVP to keep it simple */}
+        {/* <button type="button" onClick={addRule} ... >+ Add New Rule (OR)</button> */}
 
-        <button
-          type="button"
-          onClick={addRule}
-          className="w-full py-2 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-md transition duration-200"
-        >
-          + Add New Rule
-        </button>
-
-        {/* --- 5. Save Button --- */}
+        {/* --- Save Button --- */}
         <div className="mt-8">
           <button
             type="submit"
@@ -452,3 +307,99 @@ export default function NewStrategyPage() {
   );
 }
 
+// --- 8. The Reusable ConditionRow Component ---
+interface ConditionRowProps {
+  condition: StrategyCondition;
+  onRemove: () => void;
+  onConditionChange: (field: keyof StrategyCondition, value: string) => void;
+  onParamChange: (paramSide: 'indicatorAParams' | 'indicatorBParams', paramName: string, value: string) => void;
+}
+
+function ConditionRow({ condition, onRemove, onConditionChange, onParamChange }: ConditionRowProps) {
+  
+  const indicatorAInfo = INDICATORS.find(i => i.value === condition.indicatorA);
+  const indicatorBInfo = INDICATORS.find(i => i.value === condition.indicatorBValue);
+
+  return (
+    <div className="bg-gray-700 p-4 rounded-md mb-4 flex items-center gap-2 flex-wrap">
+      <span className="text-lg font-mono">IF</span>
+
+      {/* --- Indicator A --- */}
+      <div className="flex gap-2">
+        <select
+          value={condition.indicatorA}
+          onChange={(e) => onConditionChange('indicatorA', e.target.value)}
+          className="px-3 py-2 bg-gray-600 text-white rounded-md"
+        >
+          {INDICATORS.map(ind => (
+            <option key={ind.value} value={ind.value}>{ind.label}</option>
+          ))}
+        </select>
+        {indicatorAInfo?.needsPeriod && (
+          <input
+            type="number"
+            placeholder="Period"
+            value={condition.indicatorAParams.period || ''}
+            onChange={(e) => onParamChange('indicatorAParams', 'period', e.target.value)}
+            className="w-20 px-3 py-2 bg-gray-600 text-white rounded-md"
+          />
+        )}
+      </div>
+
+      {/* --- Operator --- */}
+      <select
+        value={condition.operator}
+        onChange={(e) => onConditionChange('operator', e.target.value)}
+        className="px-3 py-2 bg-gray-600 text-white rounded-md"
+      >
+        {OPERATORS.map(op => (
+          <option key={op.value} value={op.value}>{op.label}</option>
+        ))}
+      </select>
+
+      {/* --- Indicator B Type --- */}
+      <select
+        value={condition.indicatorBType}
+        onChange={(e) => onConditionChange('indicatorBType', e.target.value)}
+        className="px-3 py-2 bg-gray-600 text-white rounded-md"
+      >
+        {B_TYPES.map(type => (
+          <option key={type.value} value={type.value}>{type.label}</option>
+        ))}
+      </select>
+
+      {/* --- Indicator B (Value or Indicator) --- */}
+      {condition.indicatorBType === 'VALUE' ? (
+        <input
+          type="number"
+          value={condition.indicatorBValue}
+          onChange={(e) => onConditionChange('indicatorBValue', e.target.value)}
+          className="w-24 px-3 py-2 bg-gray-600 text-white rounded-md"
+        />
+      ) : (
+        <div className="flex gap-2">
+          <select
+            value={condition.indicatorBValue}
+            onChange={(e) => onConditionChange('indicatorBValue', e.target.value)}
+            className="px-3 py-2 bg-gray-600 text-white rounded-md"
+          >
+            {INDICATORS.map(ind => (
+              <option key={ind.value} value={ind.value}>{ind.label}</option>
+            ))}
+          </select>
+          {indicatorBInfo?.needsPeriod && (
+            <input
+              type="number"
+              placeholder="Period"
+              value={condition.indicatorBParams.period || ''}
+              onChange={(e) => onParamChange('indicatorBParams', 'period', e.target.value)}
+              className="w-20 px-3 py-2 bg-gray-600 text-white rounded-md"
+            />
+          )}
+        </div>
+      )}
+
+      <button type="button" onClick={onRemove} className="text-red-500 hover:text-red-400 font-bold ml-auto">&times;</button>
+    </div>
+  );
+}
