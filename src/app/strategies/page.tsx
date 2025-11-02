@@ -42,7 +42,8 @@ export default function StrategiesPage() {
         setStrategies(data);
       } catch (err: any) {
         setError(err.message);
-        if (err.status === 401 || err.status === 403) {
+        // Check for auth errors specifically
+        if (err.message.includes('401') || err.message.includes('403')) {
           localStorage.removeItem('token');
           router.push('/login');
         }
@@ -62,15 +63,17 @@ export default function StrategiesPage() {
         </Link>
       </nav>
 
+      {/* --- THIS IS THE MODIFIED HEADER --- */}
       <header className="flex justify-between items-center mb-12">
         <h1 className="text-4xl font-bold">My Strategies</h1>
-        <button
-          onClick={() => { /* We will wire this up next */ }}
+        <Link
+          href="/strategies/new"
           className="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition duration-200"
         >
           Create New Strategy
-        </button>
+        </Link>
       </header>
+      {/* --- END OF MODIFICATION --- */}
 
       <main>
         {loading && <p>Loading strategies...</p>}
