@@ -1,11 +1,11 @@
 'use client';
 
-// 1. Import useCallback
-import { useEffect, useState, useCallback } from 'react'; 
+import { useEffect, useState, useCallback, useRef } from 'react'; // <-- Import useRef
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-// 1. Import AddAssetForm
-import AddAssetForm from '@/app/components/AddAssetForm'; 
+import AddAssetForm from '@/app/components/AddAssetForm';
+import { useWebSocket } from '@/app/context/WebSocketContext'; // <-- 1. IMPORT
+import { StompSubscription } from '@stomp/stompjs'; // <-- Import
 
 // --- Define our data types (we'll reuse some) ---
 interface AssetAnalytics {
@@ -39,7 +39,11 @@ export default function PortfolioDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // 2. Wrap fetch logic in useCallback
+  const { subscribe, isConnected } = useWebSocket(); // <-- 2. CALL HOOK
+  // Ref to hold our active subscriptions
+  const subscriptionsRef = useRef<StompSubscription[]>([]);
+
+  // Wrap fetch logic in useCallback
   const fetchAnalytics = useCallback(async () => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -71,21 +75,91 @@ export default function PortfolioDetailPage() {
     }
   }, [portfolioId, router]); // Dependencies for the callback
 
-  // 3. Update useEffect
+  // Update useEffect
   useEffect(() => {
     if (portfolioId) {
       setLoading(true); // Set loading true when we fetch
       fetchAnalytics();
     }
   }, [portfolioId, fetchAnalytics]); // Run when ID or fetch function changes
+
+  // --- 3. ADD NEW useEffect FOR WEBSOCKETS ---
+  useEffect(() => {
+    // Don't subscribe until we have data AND the websocket is ready
+    if (!analytics || !isConnected) {
+      return;
+    }
+
+    // Unsubscribe from any old topics first
+    subscriptionsRef.current.forEach((sub) => sub.unsubscribe());
+    subscriptionsRef.current = [];
+
+    // 4. Subscribe to a topic for each asset
+    analytics.assets.forEach((asset) => {
+      const topic = `/topic/prices/${asset.symbol}`;
+      const subscription = subscribe(topic, (priceUpdate: { symbol: string, price: number }) => {
+        
+        // 5. Update state when a new price arrives
+        setAnalytics((currentAnalytics) => {
+          if (!currentAnalytics) return null;
+          
+          let newTotalValue = 0;
+          
+          // Create a new assets array with the updated price
+          const newAssets = currentAnalytics.assets.map(a => {
+            if (a.symbol === priceUpdate.symbol) {
+              // Ensure price is treated as a number
+              const newPrice = Number(priceUpdate.price);
+              const newMarketValue = a.quantity * newPrice;
+              const newGainLoss = newMarketValue - a.totalCost;
+              const newGainLossPercent = a.totalCost === 0 ? 0 : (newGainLoss / a.totalCost) * 100;
+              
+              newTotalValue += newMarketValue;
+              
+              return {
+                ...a,
+                currentPrice: newPrice,
+                marketValue: newMarketValue,
+                gainLoss: newGainLoss,
+                gainLossPercent: newGainLossPercent,
+              };
+            }
+            newTotalValue += a.marketValue;
+            return a;
+          });
+          
+          // Calculate new portfolio totals
+          const newTotalGainLoss = newTotalValue - currentAnalytics.totalPurchaseCost;
+          const newTotalGainLossPercent = currentAnalytics.totalPurchaseCost === 0 ? 0 : (newTotalGainLoss / currentAnalytics.totalPurchaseCost) * 100;
+
+          return {
+            ...currentAnalytics,
+            totalValue: newTotalValue,
+            totalGainLoss: newTotalGainLoss,
+            totalGainLossPercent: newTotalGainLossPercent,
+            assets: newAssets,
+          };
+        });
+      });
+
+      if (subscription) {
+        subscriptionsRef.current.push(subscription);
+      }
+    });
+
+    // Cleanup function when component unmounts or data changes
+    return () => {
+      subscriptionsRef.current.forEach((sub) => sub.unsubscribe());
+    };
+  }, [analytics, isConnected, subscribe]); // Re-run when these change
   
-  // 4. Create the handler function
+  // Create the handler function
   const handleAssetAdded = () => {
     setLoading(true); // Show loading feedback
-    fetchAnalytics(); // Refetch all data
+    fetchAnalytics(); // Refetch all data; the useEffect above will handle new subscriptions
   };
 
-  // 6. Update loading logic
+  // Update loading logic
   if (loading && !analytics) { // Only show full-page loading on first load
     return <div className="flex min-h-screen items-center justify-center">Loading portfolio...</div>;
   }
@@ -100,10 +174,15 @@ export default function PortfolioDetailPage() {
 
   return (
     <div className="min-h-screen p-8">
-      <nav className="mb-6">
+      {/* --- 6. Add a connection status indicator --- */}
+      <nav className="mb-6 flex justify-between items-center">
         <Link href="/dashboard" className="text-blue-400 hover:text-blue-300">
           &larr; Back to Dashboard
         </Link>
+        <div className="flex items-center gap-2">
+          <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          {isConnected ? 'Live' : 'Disconnected'}
+        </div>
       </nav>
 
       {/* --- 1. Header & Analytics Summary --- */}
@@ -133,7 +212,7 @@ export default function PortfolioDetailPage() {
         </div>
       </header>
 
-      {/* --- 7. Update Main Layout --- */}
+      {/* --- Main Layout --- */}
       <main className="grid grid-cols-1 lg:grid-cols-3 gap-12">
         
         {/* --- Asset List (Left/Main) --- */}
@@ -178,7 +257,7 @@ export default function PortfolioDetailPage() {
           </div>
         </div>
         
-        {/* --- 8. Add Asset Form (Right/Sidebar) --- */}
+        {/* --- Add Asset Form (Right/Sidebar) --- */}
         <div className="lg:col-span-1">
           <AddAssetForm 
             portfolioId={portfolioId} 
