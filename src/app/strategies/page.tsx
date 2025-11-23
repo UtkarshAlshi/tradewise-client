@@ -33,7 +33,7 @@ export default function StrategiesPage() {
 
     const fetchData = async () => {
       try {
-        const res = await fetch('http://localhost:8080/api/strategies', {
+        const res = await fetch('http://localhost:8000/api/strategies', {
           headers: {
             'Authorization': `Bearer ${token}`,
           },

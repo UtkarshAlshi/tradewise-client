@@ -35,7 +35,7 @@ export default function CreatePortfolioForm({ onPortfolioCreated }: CreatePortfo
     }
 
     try {
-      const res = await fetch('http://localhost:8080/api/portfolios', {
+      const res = await fetch('http://localhost:8000/api/portfolios', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

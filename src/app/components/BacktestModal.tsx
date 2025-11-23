@@ -45,7 +45,7 @@ export default function BacktestModal({ strategyId, strategyName, onClose }: Bac
     }
 
     try {
-      const res = await fetch('http://localhost:8080/api/backtest', {
+      const res = await fetch('http://localhost:8000/api/backtest', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

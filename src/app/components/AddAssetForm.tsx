@@ -33,7 +33,7 @@ export default function AddAssetForm({ portfolioId, onAssetAdded }: AddAssetForm
 
     try {
       const res = await fetch(
-        `http://localhost:8080/api/portfolios/${portfolioId}/assets`,
+        `http://localhost:8000/api/portfolios/${portfolioId}/assets`,
         {
           method: 'POST',
           headers: {

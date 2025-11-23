@@ -53,7 +53,7 @@ export default function PortfolioDetailPage() {
 
     try {
       const res = await fetch(
-        `http://localhost:8080/api/portfolios/${portfolioId}/analytics`,
+        `http://localhost:8000/api/portfolios/${portfolioId}/analytics`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,

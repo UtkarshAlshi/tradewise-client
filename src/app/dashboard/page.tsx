@@ -37,7 +37,7 @@ export default function DashboardPage() {
     const fetchData = async () => {
       try {
         // --- Fetch User Data (with headers) ---
-        const userRes = await fetch('http://localhost:8080/api/users/me', {
+        const userRes = await fetch('http://localhost:8000/api/users/me', {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -48,7 +48,7 @@ export default function DashboardPage() {
         setUser(userData);
   
         // --- Fetch Portfolios (with headers) ---
-        const portfoliosRes = await fetch('http://localhost:8080/api/portfolios', {
+        const portfoliosRes = await fetch('http://localhost:8000/api/portfolios', {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
