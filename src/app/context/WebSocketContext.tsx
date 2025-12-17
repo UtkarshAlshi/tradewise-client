@@ -22,8 +22,8 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
     // 1. Create a STOMP client
     const client = new Client({
       webSocketFactory: () => {
-        // 2. Use SockJS as the transport
-        return new SockJS('http://localhost:8080/ws');
+        // 2. Use SockJS as the transport, pointing to the API Gateway
+        return new SockJS('http://localhost:8000/ws/info'); // Changed port to 8000 and path to /ws/info
       },
       onConnect: () => {
         console.log('WebSocket connected!');

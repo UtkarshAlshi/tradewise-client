@@ -17,34 +17,55 @@ export default function RegisterPage() {
     setMessage(''); // Clear previous messages
 
     try {
-      // 3. Make the API call to our backend
-      const res = await fetch("http://localhost:8000/api/auth/register", {
-  method: "POST",
-  mode: "cors",
-  credentials: "include",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({ email, password }),
-});
+      // 3. Build API URL from env with fallback
+      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
+      const url = `${apiBase.replace(/\/$/, '')}/api/auth/register`;
 
+      // 4. Use AbortController to avoid hanging requests
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000); // 10s
 
-      // 4. Handle the response
+      const res = await fetch(url, {
+        method: 'POST',
+        mode: 'cors',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      // 5. Handle the response more defensively
+      const contentType = res.headers.get('content-type') || '';
+      let payload: string = '';
+      if (contentType.includes('application/json')) {
+        const json = await res.json();
+        // Try to pick a meaningful message from JSON
+        payload = json?.message ?? JSON.stringify(json);
+      } else {
+        payload = await res.text();
+      }
+
       if (res.ok) {
-        // We're using .text() because our backend sends a plain string
-        const successMessage = await res.text();
-        setMessage(`Success: ${successMessage}`);
-        // Clear the form
+        setMessage(`Success: ${payload}`);
         setEmail('');
         setPassword('');
       } else {
-        // Handle errors
-        const errorMessage = await res.text();
-        setMessage(`Error: ${errorMessage}`);
+        setMessage(`Error: ${payload || res.statusText}`);
       }
     } catch (error) {
-      console.error('Registration error:', error);
-      setMessage('Error: Failed to connect to the server.');
+      // Distinguish abort vs network errors
+      // DOMException name check covers AbortError in browsers
+      // TypeScript's DOMException may not be available in Node, but in browser this is fine
+      if ((error as any)?.name === 'AbortError') {
+        console.error('Registration request aborted (timeout)');
+        setMessage('Error: Request timed out. Please try again.');
+      } else {
+        console.error('Registration error:', error);
+        setMessage('Error: Failed to connect to the server. Check that the backend is running and CORS is configured.');
+      }
     }
   };
 
