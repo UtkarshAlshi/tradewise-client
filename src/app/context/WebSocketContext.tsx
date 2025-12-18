@@ -21,9 +21,25 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
   useEffect(() => {
     // 1. Create a STOMP client
     const client = new Client({
+      // connectHeaders: {}, // Removed, as token is passed via query param for SockJS handshake
       webSocketFactory: () => {
-        // 2. Use SockJS as the transport, pointing to the API Gateway
-        return new SockJS('http://localhost:8000/ws/info'); // Changed port to 8000 and path to /ws/info
+        // 2. Use SockJS as the transport and connect to the API Gateway.
+        // Prefer NEXT_PUBLIC_API_URL when set, otherwise default to http://localhost:8000 (API Gateway)
+        try {
+          const envBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'; // Changed to 8000
+          const base = envBase.replace(/\/$/, '');
+          if (typeof window !== 'undefined') {
+            const token = localStorage.getItem('token');
+            // Pass token as a query parameter for authentication during WebSocket handshake
+            const url = token ? `${base}/ws?token=${encodeURIComponent(token)}` : `${base}/ws`;
+            // No need to set connectHeaders here for SockJS initial handshake
+            return new SockJS(url);
+          }
+          return new SockJS(`${base}/ws`);
+        } catch (err) {
+          const fallback = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'; // Changed to 8000
+          return new SockJS(`${fallback.replace(/\/$/, '')}/ws`);
+        }
       },
       onConnect: () => {
         console.log('WebSocket connected!');
